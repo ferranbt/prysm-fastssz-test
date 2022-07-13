@@ -425,6 +425,22 @@ func BenchmarkUnMarshalFast(b *testing.B) {
 }
 
 func BenchmarkHashTreeRootFast(b *testing.B) {
+	ssz.EnableVectorizedHTR = false
+
+	obj := new(BeaconBlock)
+	readValidGenericSSZ(nil, benchmarkTestCase, obj)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	hh := ssz.DefaultHasherPool.Get()
+	for i := 0; i < b.N; i++ {
+		obj.HashTreeRootWith(hh)
+		hh.Reset()
+	}
+}
+
+func BenchmarkHashTreeRootVectorized(b *testing.B) {
 	ssz.EnableVectorizedHTR = true
 
 	obj := new(BeaconBlock)
