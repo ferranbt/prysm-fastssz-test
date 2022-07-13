@@ -18,28 +18,26 @@ type Checkpoint struct {
 
 type Slot uint64 // alias from the same package
 
-type Hash [32]byte
-
 type AttestationData struct {
 	Slot            Slot        `json:"slot"`
 	Index           uint64      `json:"index"`
-	BeaconBlockHash Hash        `json:"beacon_block_root" ssz-size:"32"`
+	BeaconBlockHash []byte      `json:"beacon_block_root" ssz-size:"32"`
 	Source          *Checkpoint `json:"source"`
 	Target          *Checkpoint `json:"target"`
 }
 
 type Attestation struct {
-	AggregationBits []byte              `json:"aggregation_bits" ssz:"bitlist" ssz-max:"2048"`
-	Data            *AttestationData    `json:"data"`
-	Signature       *external.Signature `json:"signature" ssz-size:"96"`
+	AggregationBits []byte           `json:"aggregation_bits" ssz:"bitlist" ssz-max:"2048"`
+	Data            *AttestationData `json:"data"`
+	Signature       []byte           `json:"signature" ssz-size:"96"`
 }
 
 type DepositData struct {
-	Pubkey                [48]byte       `json:"pubkey" ssz-size:"48"`
-	WithdrawalCredentials [32]byte       `json:"withdrawal_credentials" ssz-size:"32"`
+	Pubkey                []byte         `json:"pubkey" ssz-size:"48"`
+	WithdrawalCredentials []byte         `json:"withdrawal_credentials" ssz-size:"32"`
 	Amount                uint64         `json:"amount"`
 	Signature             external.Bytes `json:"signature" ssz-size:"96"`
-	Root                  [32]byte       `ssz:"-"`
+	Root                  []byte         `ssz:"-"`
 }
 
 type Deposit struct {
@@ -181,13 +179,12 @@ type Transfer struct {
 type BeaconBlockBody struct {
 	RandaoReveal      []byte                 `json:"randao_reveal" ssz-size:"96"`
 	Eth1Data          *Eth1Data              `json:"eth1_data"`
-	Graffiti          [32]byte               `json:"graffiti" ssz-size:"32"`
+	Graffiti          []byte                 `json:"graffiti" ssz-size:"32"`
 	ProposerSlashings []*ProposerSlashing    `json:"proposer_slashings" ssz-max:"16"`
 	AttesterSlashings []*AttesterSlashing    `json:"attester_slashings" ssz-max:"2"`
 	Attestations      []*Attestation         `json:"attestations" ssz-max:"128"`
 	Deposits          []*Deposit             `json:"deposits" ssz-max:"16"`
 	VoluntaryExits    []*SignedVoluntaryExit `json:"voluntary_exits" ssz-max:"16"`
-	SyncAggregate     *SyncAggregate         `json:"sync_aggregate"`
 }
 
 type SignedBeaconBlockHeader struct {

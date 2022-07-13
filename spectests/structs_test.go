@@ -15,6 +15,7 @@ import (
 	"github.com/golang/snappy"
 	ssz "github.com/prysmaticlabs/fastssz"
 	"github.com/prysmaticlabs/fastssz/fuzz"
+	"github.com/prysmaticlabs/go-bitfield"
 
 	"gopkg.in/yaml.v2"
 )
@@ -424,6 +425,8 @@ func BenchmarkUnMarshalFast(b *testing.B) {
 }
 
 func BenchmarkHashTreeRootFast(b *testing.B) {
+	ssz.EnableVectorizedHTR = true
+
 	obj := new(BeaconBlock)
 	readValidGenericSSZ(nil, benchmarkTestCase, obj)
 
@@ -434,6 +437,87 @@ func BenchmarkHashTreeRootFast(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		obj.HashTreeRootWith(hh)
 		hh.Reset()
+	}
+}
+
+func BenchmarkBlockBodyNormal(b *testing.B) {
+	benchmarkBlockBody(b, false)
+}
+
+func BenchmarkBlockBodyVectorized(b *testing.B) {
+	benchmarkBlockBody(b, true)
+}
+
+func benchmarkBlockBody(b *testing.B, useVectorized bool) {
+	ssz.EnableVectorizedHTR = useVectorized
+
+	b32 := make([]byte, 32)
+	b48 := make([]byte, 48)
+	b96 := make([]byte, 96)
+
+	rand.Read(b32)
+	rand.Read(b48)
+	rand.Read(b96)
+
+	deposits := make([]*Deposit, 16)
+	for i := range deposits {
+		deposits[i] = &Deposit{}
+		deposits[i].Proof = make([][]byte, 33)
+		for j := range deposits[i].Proof {
+			deposits[i].Proof[j] = b32
+		}
+		data := &DepositData{
+			Pubkey:                b48,
+			WithdrawalCredentials: b32,
+			Amount:                128,
+			Signature:             b96,
+		}
+		deposits[i].Data = data
+	}
+	atts := make([]*Attestation, 128)
+
+	for i := range atts {
+		atts[i] = &Attestation{}
+		atts[i].Signature = b96
+		atts[i].AggregationBits = bitfield.NewBitlist(1)
+		atts[i].Data = &AttestationData{
+			Slot:            128,
+			Index:           128,
+			BeaconBlockHash: b32,
+			Source: &Checkpoint{
+				Epoch: 128,
+				Root:  b32,
+			},
+			Target: &Checkpoint{
+				Epoch: 128,
+				Root:  b32,
+			},
+		}
+	}
+
+	body := BeaconBlockBody{
+		RandaoReveal: b96,
+		Eth1Data: &Eth1Data{
+			DepositRoot:  b32,
+			DepositCount: 128,
+			BlockHash:    b32,
+		},
+		Graffiti:          b32,
+		ProposerSlashings: make([]*ProposerSlashing, 0),
+		AttesterSlashings: make([]*AttesterSlashing, 0),
+		Attestations:      atts,
+		Deposits:          deposits,
+		VoluntaryExits:    make([]*SignedVoluntaryExit, 0),
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for n := 0; n < b.N; n++ {
+		_, err := body.HashTreeRoot()
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
